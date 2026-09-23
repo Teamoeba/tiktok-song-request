@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Song Request Overlay</title>
+    <!-- Library Socket.io untuk komunikasi dengan server.js -->
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body {
+            background-color: transparent; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+        #widget {
+            display: none; 
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            width: 400px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        img { width: 70px; height: 70px; border-radius: 5px; object-fit: cover; }
+        .info { flex-grow: 1; }
+        .title { font-weight: bold; font-size: 18px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px;}
+        .req { font-size: 14px; color: #00ffcc; margin-top: 5px;}
+    </style>
+</head>
+<body>
+
+    <!-- Tampilan Visual -->
+    <div id="widget">
+        <img id="cover" src="" alt="cover">
+        <div class="info">
+            <p class="title" id="title">Judul Lagu</p>
+            <p class="req" id="requester">Requested by: @user</p>
+        </div>
+    </div>
+
+    <!-- Audio Player (Tersembunyi) -->
+    <audio id="audioPlayer"></audio>
+
+    <script>
+        const socket = io();
+        const widget = document.getElementById('widget');
+        const audio = document.getElementById('audioPlayer');
+        
+        socket.on('play_song', (data) => {
+            document.getElementById('title').innerText = data.title;
+            document.getElementById('requester').innerText = "Req by: @" + data.requester;
+            document.getElementById('cover').src = data.thumbnail;
+            widget.style.display = 'flex';
+
+            audio.src = data.url;
+            audio.play().catch(e => console.log("Auto-play prevented", e));
+        });
+
+        audio.onended = () => {
+            widget.style.display = 'none';
+            socket.emit('song_ended');
+        };
+
+        // Menerima perintah skip dari moderator
+        socket.on('skip_song', () => {
+            if (!audio.paused) {
+                audio.pause(); // Hentikan audio
+                audio.onended(); // Panggil fungsi onended untuk memicu lagu selanjutnya
+            }
+        });
+    </script>
+</body>
+</html>

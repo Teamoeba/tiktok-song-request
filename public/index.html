@@ -1,36 +1,111 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <title>Song Request Overlay</title>
     <!-- Library Socket.io untuk komunikasi dengan server.js -->
     <script src="/socket.io/socket.io.js"></script>
+    <!-- YouTube IFrame Player API Resmi -->
+    <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         body {
             background-color: transparent; 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: white;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 20px;
         }
+        
+        /* Desain Widget Lagu */
         #widget {
             display: none; 
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.75);
             padding: 15px;
-            border-radius: 10px;
-            width: 400px;
-            display: flex;
+            border-radius: 12px;
+            width: 420px;
             align-items: center;
             gap: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            animation: fadeIn 0.4s ease;
         }
-        img { width: 70px; height: 70px; border-radius: 5px; object-fit: cover; }
-        .info { flex-grow: 1; }
-        .title { font-weight: bold; font-size: 18px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px;}
-        .req { font-size: 14px; color: #00ffcc; margin-top: 5px;}
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        img#cover { 
+            width: 75px; 
+            height: 75px; 
+            border-radius: 8px; 
+            object-fit: cover; 
+            background-color: #222;
+        }
+        .info { 
+            flex-grow: 1; 
+            min-width: 0;
+        }
+        .title { 
+            font-weight: bold; 
+            font-size: 17px; 
+            margin: 0; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            max-width: 310px;
+            color: #ffffff;
+        }
+        .req { 
+            font-size: 14px; 
+            color: #00ffcc; 
+            margin: 6px 0 0 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Desain Widget Follower Baru */
+        #follow-widget {
+            display: none;
+            background: linear-gradient(90deg, rgba(255,0,150,0.9), rgba(0,204,255,0.9));
+            padding: 12px 24px;
+            border-radius: 50px;
+            width: max-content;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            font-size: 18px;
+            margin: 0;
+        }
+        @keyframes slideIn {
+            0% { transform: translateX(-100%); opacity: 0; }
+            100% { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            0% { transform: translateX(0); opacity: 1; }
+            100% { transform: translateX(100%); opacity: 0; }
+        }
+
+        /* Container YouTube Player (Tersembunyi di background agar audio tetap berjalan di OBS) */
+        #yt-wrapper {
+            position: fixed;
+            top: -9999px;
+            left: -9999px;
+            width: 200px;
+            height: 200px;
+            opacity: 0.01;
+            pointer-events: none;
+            z-index: -999;
+        }
     </style>
 </head>
 <body>
 
-    <!-- Tampilan Visual -->
+    <!-- Tampilan Visual Follow -->
+    <div id="follow-widget">
+        <p style="margin: 0;">🎉 <span id="follow-name" style="color: #ffff00; font-weight: bold; text-shadow: 1px 1px 2px black;">@user</span> baru saja follow!</p>
+    </div>
+
+    <!-- Tampilan Visual Lagu -->
     <div id="widget">
         <img id="cover" src="" alt="cover">
         <div class="info">
@@ -39,36 +114,156 @@
         </div>
     </div>
 
-    <!-- Audio Player (Tersembunyi) -->
-    <audio id="audioPlayer"></audio>
+    <!-- YouTube Embed Player Container -->
+    <div id="yt-wrapper">
+        <div id="youtube-player"></div>
+    </div>
 
     <script>
         const socket = io();
         const widget = document.getElementById('widget');
-        const audio = document.getElementById('audioPlayer');
+        const followWidget = document.getElementById('follow-widget');
         
-        socket.on('play_song', (data) => {
-            document.getElementById('title').innerText = data.title;
-            document.getElementById('requester').innerText = "Req by: @" + data.requester;
-            document.getElementById('cover').src = data.thumbnail;
-            widget.style.display = 'flex';
+        let ytPlayer = null;
+        let isPlayerReady = false;
+        let currentPlayId = null;
+        let pendingVideoId = null;
 
-            audio.src = data.url;
-            audio.play().catch(e => console.log("Auto-play prevented", e));
-        });
-
-        audio.onended = () => {
-            widget.style.display = 'none';
-            socket.emit('song_ended');
+        // --- 1. INISIALISASI YOUTUBE IFRAME PLAYER ---
+        window.onYouTubeIframeAPIReady = function() {
+            ytPlayer = new YT.Player('youtube-player', {
+                height: '200',
+                width: '200',
+                playerVars: {
+                    'autoplay': 1,
+                    'controls': 0,
+                    'disablekb': 1,
+                    'fs': 0,
+                    'rel': 0,
+                    'playsinline': 1
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange,
+                    'onError': onPlayerError
+                }
+            });
         };
 
-        // Menerima perintah skip dari moderator
-        socket.on('skip_song', () => {
-            if (!audio.paused) {
-                audio.pause(); // Hentikan audio
-                audio.onended(); // Panggil fungsi onended untuk memicu lagu selanjutnya
+        function onPlayerReady(event) {
+            isPlayerReady = true;
+            if (pendingVideoId) {
+                playVideo(pendingVideoId);
+                pendingVideoId = null;
             }
+        }
+
+        function onPlayerStateChange(event) {
+            // YT.PlayerState.ENDED === 0
+            if (event.data === YT.PlayerState.ENDED) {
+                notifySongEnded();
+            }
+        }
+
+        function onPlayerError(event) {
+            console.warn('[Overlay] YouTube Player error:', event.data);
+            // Error 100/101/150: video dihapus atau tidak diizinkan di-embed.
+            // Otomatis skip ke antrean berikutnya agar antrean tidak macet.
+            notifySongEnded();
+        }
+
+        function playVideo(videoId) {
+            if (isPlayerReady && ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
+                ytPlayer.loadVideoById(videoId);
+                ytPlayer.playVideo();
+            } else {
+                pendingVideoId = videoId;
+            }
+        }
+
+        function notifySongEnded() {
+            widget.style.display = 'none';
+            if (currentPlayId) {
+                socket.emit('song_ended', { playId: currentPlayId });
+                currentPlayId = null;
+            }
+        }
+
+        // --- 2. LOGIKA PENERIMAAN EVENT DARI SERVER ---
+        socket.on('play_song', (data) => {
+            if (!data || !data.videoId) return;
+
+            currentPlayId = data.playId;
+            document.getElementById('title').innerText = data.title;
+            document.getElementById('requester').innerText = "Req by: @" + data.requester;
+            document.getElementById('cover').src = data.thumbnail || '';
+            widget.style.display = 'flex';
+
+            playVideo(data.videoId);
         });
+
+        socket.on('skip_song', () => {
+            widget.style.display = 'none';
+            if (ytPlayer && typeof ytPlayer.stopVideo === 'function') {
+                ytPlayer.stopVideo();
+            }
+            currentPlayId = null;
+        });
+
+        // --- 3. NOTIFIKASI FOLLOWER BARU (DENGAN SISTEM ANTREAN) ---
+        const followQueue = [];
+        let isShowingFollow = false;
+
+        function playTingSound() {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                const ctx = new AudioCtx();
+                if (ctx.state === 'suspended') {
+                    ctx.resume();
+                }
+                const osc = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, ctx.currentTime); 
+                osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.1); 
+                gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+                osc.connect(gainNode);
+                gainNode.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.5);
+            } catch(e) { 
+                console.log("Audio alert error:", e); 
+            }
+        }
+
+        socket.on('new_follower', (data) => {
+            if (!data || !data.username) return;
+            followQueue.push(data.username);
+            processFollowQueue();
+        });
+
+        function processFollowQueue() {
+            if (isShowingFollow || followQueue.length === 0) return;
+            isShowingFollow = true;
+            const username = followQueue.shift();
+
+            playTingSound();
+
+            document.getElementById('follow-name').innerText = "@" + username;
+            followWidget.style.animation = "slideIn 0.5s ease-out";
+            followWidget.style.display = 'block';
+            
+            setTimeout(() => {
+                followWidget.style.animation = "slideOut 0.5s ease-in";
+                setTimeout(() => {
+                    followWidget.style.display = 'none';
+                    isShowingFollow = false;
+                    processFollowQueue();
+                }, 450);
+            }, 3500);
+        }
     </script>
 </body>
 </html>

@@ -1,23 +1,29 @@
-# 🎵 TikTok Live Song Request (Auto-DJ)
+# 🎵 TikTok Live Song Request (Auto-DJ) & Alerts
 
-Sebuah sistem otomatis (*bot*) untuk TikTok Live yang memungkinkan penonton melakukan *request* lagu via kolom komentar. Lagu akan otomatis dicari melalui YouTube, diambil audionya, dan diputar langsung melalui Streamlabs/OBS sebagai *Browser Source*.
+Sistem bot otomatis untuk TikTok Live yang memungkinkan penonton me-*request* lagu via kolom komentar. Lagu otomatis dicari melalui YouTube dan diputar langsung melalui Streamlabs/OBS sebagai *Browser Source* menggunakan pemutar YouTube IFrame resmi yang stabil, bebas dari pemblokiran *cipher*, dan anti-macet.
 
-Versi bawaan (*default*) dari kode ini membebaskan **siapa saja** untuk melakukan *request* dan *skip* lagu.
+Dilengkapi juga dengan sistem notifikasi *Follower* baru (pop-up animasi + efek suara "Ting!").
 
 ---
 
 ## ✨ Fitur Utama
 
-- **Real-time Song Request**: Penonton cukup mengetik `!play [judul]` dan lagu akan masuk ke antrean.
-- **Skip Lagu**: Ketik `!skip` untuk melewati lagu yang sedang berputar.
-- **OBS/Streamlabs Integration**: Menampilkan *overlay* interaktif (judul lagu, *thumbnail*, dan *username* pe-request) langsung di layar *live* Anda tanpa perlu membuka browser secara manual.
+- **Real-time Song Request**: Penonton cukup mengetik `!play [judul lagu]` di kolom komentar TikTok Live.
+- **Sistem Prioritas VIP (Fast Track)**: Request dari Fan Club (Subscriber) dan Moderator otomatis diselipkan di depan antrean penonton reguler.
+- **Batasan Akses Cerdas**:
+  - `!play` hanya dapat digunakan oleh penonton yang sudah **Follow** akun streamer (mendorong penonton mem-follow).
+  - `!skip` dibatasi untuk **Moderator/Host** (unlimited) dan **Fan Club** (maksimal 2x jatah skip).
+- **Anti-Macet & Auto-Skip**: Jika video YouTube yang di-request terkena hak cipta (*copyright*), berstatus privat, atau tidak diizinkan di-*embed*, bot otomatis melompat ke lagu berikutnya tanpa menghentikan antrean.
+- **Auto-Reconnect TikTok**: Server secara otomatis mencoba menyambung kembali jika streamer belum memulai live atau saat koneksi internet terputus.
+- **Notifikasi Follower Baru**: Menampilkan animasi pop-up nama akun yang baru follow beserta efek suara.
+- **OBS/Streamlabs Integration**: Menampilkan *overlay* interaktif (judul lagu, thumbnail, dan requester) langsung di layar stream Anda.
 
 ---
 
 ## 🛠️ Persyaratan Sistem
 
 Sebelum menjalankan proyek ini, pastikan komputer Anda sudah terinstal:
-- [Node.js](https://nodejs.org/) (Versi 14 ke atas disarankan)
+- [Node.js](https://nodejs.org/) (Versi 16 ke atas)
 - Software *streaming* (OBS Studio, Streamlabs Desktop, atau TikTok Live Studio)
 
 ---
@@ -35,10 +41,10 @@ Sebelum menjalankan proyek ini, pastikan komputer Anda sudah terinstal:
    npm install
    ```
 
-3. **Konfigurasi Username**:
-   Buka file `server.js`. Cari baris ke-18 dan ubah menjadi *username* TikTok Anda:
+3. **Konfigurasi Username TikTok**:
+   Buka file `server.js`, cari baris berikut (sekitar baris ke-19) dan ubah dengan *username* TikTok Anda (tanpa tanda `@`):
    ```javascript
-   let tiktokUsername = "isi_dengan_username_tiktok_anda"; 
+   let tiktokUsername = "username_tiktok_anda"; 
    ```
 
 ---
@@ -46,78 +52,65 @@ Sebelum menjalankan proyek ini, pastikan komputer Anda sudah terinstal:
 ## 🎮 Cara Menjalankan
 
 1. Buka Terminal di folder proyek ini.
-2. Jalankan server: `npm start` (atau `node server.js`).
-3. Buka **Streamlabs** atau **OBS**.
-4. Tambahkan **Browser Source** baru, masukkan URL: `http://localhost:3000`.
-5. Centang **"Control audio via OBS / Streamlabs"**.
+2. Jalankan server:
+   ```bash
+   npm start
+   ```
+3. Buka **Streamlabs** atau **OBS Studio**.
+4. Tambahkan source baru bertipe **Browser Source**:
+   - **URL**: `http://localhost:3000`
+   - **Width**: `1920` (atau sesuaikan dengan canvas Anda, misalnya `1080` x `1920` untuk live vertikal)
+   - **Height**: `1080`
+   - Centang opsi: **"Control audio via OBS / Streamlabs"** (agar suara lagu masuk ke mixer audio OBS).
 
 ---
 
-## 📜 Daftar Command (Bawaan)
+## 🧪 Cara Mengetes Overlay (Tanpa Perlu Live TikTok)
 
-| Command | Siapa yang bisa pakai? | Fungsi |
+Anda bisa menguji tampilan dan audio overlay secara langsung melalui browser:
+
+1. Buka halaman overlay di browser: [http://localhost:3000](http://localhost:3000)
+2. Buka tab baru di browser Anda untuk memicu perintah uji coba:
+   - **Tes Putar Lagu**: [http://localhost:3000/test-play?q=coldplay+yellow](http://localhost:3000/test-play?q=coldplay+yellow)
+   - **Tes Lagu VIP**: [http://localhost:3000/test-play?q=komang&vip=1](http://localhost:3000/test-play?q=komang&vip=1)
+   - **Tes Skip Lagu**: [http://localhost:3000/test-skip](http://localhost:3000/test-skip)
+   - **Tes Notifikasi Follow**: [http://localhost:3000/test-follow?user=budi_santoso](http://localhost:3000/test-follow?user=budi_santoso)
+
+---
+
+## 📜 Daftar Command Chat TikTok Live
+
+| Command | Syarat Pengguna | Keterangan |
 | :--- | :--- | :--- |
-| `!play [judul lagu]` | Semua Penonton | Mencari dan memasukkan lagu ke antrean. |
-| `!skip` | Semua Penonton | Melewati lagu saat ini. |
+| `!play [judul lagu]` | Follower / Fan Club / Mod | Mencari lagu di YouTube dan memasukkannya ke antrean. |
+| `!play [judul lagu]` | Fan Club (Subscriber) & Mod | **Jalur VIP**: lagu ditaruh di urutan paling depan antrean. |
+| `!skip` | Moderator & Host | Melewati lagu yang sedang berputar (tanpa batas). |
+| `!skip` | Fan Club (Subscriber) | Melewati lagu saat ini (maksimal jatah 2x skip per sesi). |
 
 ---
 
-## 🔧 Panduan Kustomisasi Hak Akses (Permissions)
+## 🔧 Panduan Kustomisasi
 
-Ingin membuat bot ini lebih eksklusif? Anda bisa memodifikasi kode di `server.js` (di dalam fungsi `tiktokLiveConnection.on('chat', ...)`). Berikut beberapa kode tambahan yang bisa Anda gunakan:
+Semua pengaturan hak akses dapat disesuaikan di dalam file `server.js`:
 
-### 1. Membatasi `!skip` HANYA untuk Moderator & Host
-Sangat disarankan agar penonton usil tidak sembarangan melewakan lagu. 
-**Ganti** blok logika `if (comment === '!skip') { ... }` dengan kode berikut:
-
+### 1. Membebaskan `!play` untuk Semua Orang (Termasuk non-follower)
+Di `server.js`, cari bagian berikut di dalam handler `chat`:
 ```javascript
-    let isModOrHost = data.isModerator || username === tiktokUsername;
-    
-    if (comment === '!skip') {
-        if (isModOrHost) {
-            console.log(`[SKIP] Lagu dilewati oleh moderator ${username}`);
-            io.emit('skip_song'); 
-        } else {
-            console.log(`[DITOLAK] ${username} mencoba skip, tapi bukan moderator.`);
-        }
-        return; 
-    }
+// Cek status follow
+if (followRole === 0 && !isModerator && !isSubscriber && !isHost) {
+    console.log(`[DITOLAK] @${username} mencoba request lagu, tapi belum follow.`);
+    return;
+}
 ```
+Cukup beri komentar (`//`) atau hapus blok kode di atas jika ingin membebaskan siapa saja untuk me-request lagu.
 
-### 2. Membatasi `!play` HANYA untuk Follower
-Agar penonton terdorong untuk mem-follow Anda sebelum bisa me-request lagu.
-**Tambahkan** pengecekan status `data.followRole` tepat di bawah `if (comment.startsWith('!play ')) {`:
-
+### 2. Mengubah Jatah Skip untuk Fan Club
+Cari baris pengecekan jatah skip di `server.js`:
 ```javascript
-    if (comment.startsWith('!play ')) {
-        // Cek apakah belum follow (0 = belum follow, 1 = follower, 2 = mutual)
-        let isModOrHost = data.isModerator || username === tiktokUsername;
-        if (data.followRole === 0 && !isModOrHost) {
-            console.log(`[DITOLAK] ${username} mencoba request lagu, tapi belum follow.`);
-            return;
-        }
-        
-        // ... (kode let songQuery dan seterusnya)
+if (fanClubSkips[username] < 2) {
 ```
-
-### 3. Fitur VIP Fast Track (Khusus Fan Club)
-Ingin lagu *request*-an keanggotaan Fan Club (Love Oren) langsung ditaruh di antrean paling depan? 
-**Ganti** baris `queue.push(songData);` di dalam blok `!play` dengan logika ini:
-
-```javascript
-        let isModOrHost = data.isModerator || username === tiktokUsername;
-        let isFanClub = data.isSubscriber; // Cek status keanggotaan
-
-        if (isFanClub || isModOrHost) {
-            // Taruh di urutan PALING DEPAN
-            queue.unshift(songData);
-            console.log(`[VIP] Lagu diselipkan ke depan antrean!`);
-        } else {
-            // Taruh di antrean reguler (paling belakang)
-            queue.push(songData);
-        }
-```
+Ubah angka `2` sesuai jumlah jatah skip yang ingin Anda berikan kepada member Fan Club (misalnya `3` atau `5`).
 
 ---
-*Dibuat untuk mempermudah interaksi streamer dan penonton.*
 
+*Dibuat untuk mempermudah interaksi streamer TikTok Live dan penonton.*

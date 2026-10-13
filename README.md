@@ -74,7 +74,7 @@ Anda bisa menguji tampilan dan audio overlay secara langsung melalui browser:
    - **Tes Putar Lagu**: [http://localhost:3000/test-play?q=coldplay+yellow](http://localhost:3000/test-play?q=coldplay+yellow)
    - **Tes Lagu VIP**: [http://localhost:3000/test-play?q=komang&vip=1](http://localhost:3000/test-play?q=komang&vip=1)
    - **Tes Skip Lagu**: [http://localhost:3000/test-skip](http://localhost:3000/test-skip)
-   - **Tes Notifikasi Follow**: [http://localhost:3000/test-follow?user=budi_santoso](http://localhost:3000/test-follow?user=budi_santoso)
+   - **Tes Notifikasi Follow**: [http://localhost:3000/test-follow?user=nama_user](http://localhost:3000/test-follow?user=nama_user)
 
 ---
 

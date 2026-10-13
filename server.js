@@ -19,7 +19,9 @@ let songTimeoutTimer = null;
 let fanClubSkips = {}; // Memori batas skip untuk subscriber/fan club
 
 // --- 1. SETUP TIKTOK DENGAN AUTO-RECONNECT ---
-let tiktokUsername = "teamoeba"; 
+// Ubah dengan username TikTok Anda (tanpa tanda @) atau set via environment variable:
+// Contoh: TIKTOK_USERNAME=username_anda npm start
+let tiktokUsername = process.env.TIKTOK_USERNAME || "username_tiktok_anda"; 
 let tiktokLiveConnection = new TikTokLiveConnection(tiktokUsername, {});
 
 let isConnecting = false;
@@ -27,6 +29,10 @@ let reconnectTimer = null;
 
 async function connectTikTok() {
     if (isConnecting) return;
+    if (tiktokUsername === "username_tiktok_anda") {
+        console.warn("[PERINGATAN] ⚠️ Silakan ubah 'tiktokUsername' di server.js (baris 24) dengan username TikTok Anda sebelum digunakan saat live!");
+        return;
+    }
     isConnecting = true;
 
     try {
@@ -316,11 +322,13 @@ app.get('/test-follow', (req, res) => {
     res.json({ success: true, message: `Notifikasi follow @${user} dikirim ke overlay.` });
 });
 
-server.listen(3000, () => {
-    console.log('Server berjalan di http://localhost:3000');
+const PORT = process.env.PORT || 3000;
+
+server.listen(PORT, () => {
+    console.log(`Server berjalan di http://localhost:${PORT}`);
     console.log('Untuk tes di browser:');
-    console.log('- Overlay OBS:  http://localhost:3000');
-    console.log('- Tes lagu:     http://localhost:3000/test-play?q=judul_lagu');
-    console.log('- Tes skip:     http://localhost:3000/test-skip');
-    console.log('- Tes follower: http://localhost:3000/test-follow?user=nama_user');
+    console.log(`- Overlay OBS:  http://localhost:${PORT}`);
+    console.log(`- Tes lagu:     http://localhost:${PORT}/test-play?q=judul_lagu`);
+    console.log(`- Tes skip:     http://localhost:${PORT}/test-skip`);
+    console.log(`- Tes follower: http://localhost:${PORT}/test-follow?user=nama_user`);
 });

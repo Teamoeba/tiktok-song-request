@@ -92,7 +92,14 @@ function parseUserData(data) {
     return { username, comment, isHost, isModerator, isSubscriber, followRole };
 }
 
-// Helper pencarian YouTube yang andal
+function formatDuration(sec) {
+    if (!sec || isNaN(sec)) return "3:45";
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+// Helper pencarian YouTube yang andal (mengembalikan judul, artis, durasi, thumbnail)
 async function searchYouTube(query) {
     try {
         const searchResult = await yts(query);
@@ -101,6 +108,7 @@ async function searchYouTube(query) {
             return {
                 videoId: video.videoId,
                 title: video.title,
+                artist: video.author?.name || 'YouTube Music',
                 thumbnail: video.thumbnail || '',
                 durationInSec: video.seconds || 0
             };
@@ -116,6 +124,7 @@ async function searchYouTube(query) {
             return {
                 videoId: video.id,
                 title: video.title,
+                artist: video.channel?.name || 'YouTube Music',
                 thumbnail: (video.thumbnails && video.thumbnails.length > 0) ? video.thumbnails[0].url : '',
                 durationInSec: video.durationInSec || 0
             };
@@ -186,9 +195,11 @@ async function handleSongRequest(songQuery, username, isVip) {
             let songData = {
                 videoId: video.videoId,
                 title: video.title,
+                artist: video.artist || 'YouTube Music',
                 requester: username,
                 thumbnail: video.thumbnail,
                 durationInSec: video.durationInSec,
+                durationText: formatDuration(video.durationInSec),
                 isVip: isVip
             };
 
@@ -226,7 +237,7 @@ function checkQueue() {
     // Identifier unik untuk mencegah double-skip dari banyak tab/overlay
     currentSong.playId = Date.now() + '_' + Math.random().toString(36).slice(2, 7);
 
-    console.log(`[PUTAR] Memutar lagu: "${currentSong.title}" (Request: @${currentSong.requester})`);
+    console.log(`[PUTAR] Memutar lagu: "${currentSong.title}" - ${currentSong.artist} (Request: @${currentSong.requester})`);
     io.emit('play_song', currentSong);
 
     // Timeout pengaman jika lagu macet / tidak ada respon dari client

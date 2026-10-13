@@ -7,73 +7,240 @@
     <script src="/socket.io/socket.io.js"></script>
     <!-- YouTube IFrame Player API Resmi -->
     <script src="https://www.youtube.com/iframe_api"></script>
+    <!-- Google Fonts: Plus Jakarta Sans / Quicksand -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             background-color: transparent; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: white;
+            font-family: 'Plus Jakarta Sans', 'Quicksand', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: #2d2026;
             overflow: hidden;
+            margin: 0;
+            padding: 24px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
-            margin: 20px;
+            gap: 16px;
         }
-        
-        /* Desain Widget Lagu */
-        #widget {
-            display: none; 
-            background: rgba(0, 0, 0, 0.75);
-            padding: 15px;
-            border-radius: 12px;
-            width: 420px;
+
+        /* --- STACKED 3D CARD WIDGET LAGU --- */
+        #widget-container {
+            display: none; /* Otomatis flex saat ada lagu berputar */
+            position: relative;
+            width: 540px;
+            margin-bottom: 20px;
+            animation: popIn 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            0% { opacity: 0; transform: translateY(25px) scale(0.96); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* Lapisan 3D Bawah (Ungu / Lilac) */
+        .layer-purple {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 14px;
+            height: 100%;
+            background-color: #8f6de0;
+            border: 2px solid #2d2026;
+            border-radius: 30px;
+            z-index: 1;
+        }
+
+        /* Lapisan 3D Tengah (Pink / Coral) */
+        .layer-pink {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 7px;
+            height: 100%;
+            background-color: #f17076;
+            border: 2px solid #2d2026;
+            border-radius: 30px;
+            z-index: 2;
+        }
+
+        /* Kartu Utama (Krem / Warm Off-White) */
+        .main-card {
+            position: relative;
+            z-index: 3;
+            background-color: #fcf1e5;
+            border: 2px solid #2d2026;
+            border-radius: 30px;
+            padding: 16px 20px 18px 22px;
+            display: flex;
             align-items: center;
-            gap: 15px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-            animation: fadeIn 0.4s ease;
+            justify-content: space-between;
+            gap: 18px;
+            box-shadow: 0 4px 15px rgba(45, 32, 38, 0.08);
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        img#cover { 
-            width: 75px; 
-            height: 75px; 
-            border-radius: 8px; 
-            object-fit: cover; 
-            background-color: #222;
-        }
-        .info { 
-            flex-grow: 1; 
+
+        /* Bagian Kiri: Informasi Lagu & Kontrol */
+        .left-content {
+            flex: 1;
             min-width: 0;
+            display: flex;
+            flex-direction: column;
         }
-        .title { 
-            font-weight: bold; 
-            font-size: 17px; 
-            margin: 0; 
-            white-space: nowrap; 
-            overflow: hidden; 
-            text-overflow: ellipsis; 
-            max-width: 310px;
-            color: #ffffff;
+
+        /* Baris Atas: Requester Username + Garis Panjang */
+        .header-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
         }
-        .req { 
-            font-size: 14px; 
-            color: #00ffcc; 
-            margin: 6px 0 0 0;
+
+        .requester-badge {
+            font-size: 13px;
+            font-weight: 700;
+            color: #55414b;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            max-width: 170px;
         }
 
-        /* Desain Widget Follower Baru */
+        .header-divider {
+            flex-grow: 1;
+            height: 2px;
+            background-color: #2d2026;
+            border-radius: 2px;
+            opacity: 0.85;
+        }
+
+        /* Judul Lagu */
+        .song-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: #2d2026;
+            margin: 0 0 3px 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            letter-spacing: -0.4px;
+            line-height: 1.2;
+        }
+
+        /* Nama Artis & Waktu */
+        .sub-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .artist-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #5a4550;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 220px;
+        }
+
+        .time-display {
+            font-size: 13px;
+            font-weight: 700;
+            color: #2d2026;
+            white-space: nowrap;
+        }
+
+        /* Progress Bar dengan Knob */
+        .progress-container {
+            position: relative;
+            width: 100%;
+            height: 2px;
+            background-color: #2d2026;
+            margin-bottom: 14px;
+            border-radius: 2px;
+        }
+
+        .progress-knob {
+            position: absolute;
+            top: 50%;
+            left: 0%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            background-color: #2d2026;
+            border-radius: 50%;
+            transition: left 0.3s linear;
+        }
+
+        /* Kontrol Musik (Aestetik) */
+        .controls-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .ctrl-icon {
+            color: #2d2026;
+            cursor: default;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+        }
+
+        .play-btn-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid #2d2026;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: transparent;
+            padding-left: 2px;
+        }
+
+        .heart-icon {
+            color: #2d2026;
+        }
+
+        /* Bagian Kanan: Thumbnail Gambar Lagu */
+        .right-cover {
+            flex-shrink: 0;
+            width: 195px;
+            height: 135px;
+            border: 2px solid #2d2026;
+            border-radius: 22px;
+            overflow: hidden;
+            background-color: #f2e2d5;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .right-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* --- DESAIN NOTIFIKASI FOLLOWER BARU --- */
         #follow-widget {
             display: none;
-            background: linear-gradient(90deg, rgba(255,0,150,0.9), rgba(0,204,255,0.9));
-            padding: 12px 24px;
+            background: linear-gradient(90deg, #f17076, #8f6de0);
+            border: 2px solid #2d2026;
+            color: #ffffff;
+            padding: 10px 22px;
             border-radius: 50px;
             width: max-content;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            font-size: 18px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            font-size: 16px;
+            font-weight: 700;
             margin: 0;
         }
         @keyframes slideIn {
@@ -100,34 +267,110 @@
 </head>
 <body>
 
-    <!-- Tampilan Visual Follow -->
+    <!-- Tampilan Visual Follower Baru -->
     <div id="follow-widget">
-        <p style="margin: 0;">🎉 <span id="follow-name" style="color: #ffff00; font-weight: bold; text-shadow: 1px 1px 2px black;">@user</span> baru saja follow!</p>
+        <p style="margin: 0;">🎉 <span id="follow-name" style="color: #fffb91; font-weight: 800; text-shadow: 1px 1px 2px rgba(0,0,0,0.4);">@user</span> baru saja follow!</p>
     </div>
 
-    <!-- Tampilan Visual Lagu -->
-    <div id="widget">
-        <img id="cover" src="" alt="cover">
-        <div class="info">
-            <p class="title" id="title">Judul Lagu</p>
-            <p class="req" id="requester">Requested by: @user</p>
+    <!-- Tampilan Visual Lagu Retro / Lo-fi Style Sesuai Gambar -->
+    <div id="widget-container">
+        <!-- Lapisan 3D Bawah (Ungu) -->
+        <div class="layer-purple"></div>
+        <!-- Lapisan 3D Tengah (Pink) -->
+        <div class="layer-pink"></div>
+
+        <!-- Kartu Utama (Krem) -->
+        <div class="main-card">
+            <!-- Sisi Kiri: Teks & Player Control -->
+            <div class="left-content">
+                <!-- Baris Username Peng-request -->
+                <div class="header-row">
+                    <span class="requester-badge" id="requester">@username</span>
+                    <div class="header-divider"></div>
+                </div>
+
+                <!-- Judul Lagu -->
+                <h1 class="song-title" id="title">Suggest a song</h1>
+
+                <!-- Nama Artis & Durasi -->
+                <div class="sub-row">
+                    <span class="artist-name" id="artist">Include the artist's name</span>
+                    <span class="time-display" id="time-display">0:00</span>
+                </div>
+
+                <!-- Progress Bar Slider -->
+                <div class="progress-container">
+                    <div class="progress-knob" id="progress-knob"></div>
+                </div>
+
+                <!-- Deretan Tombol Kontrol Musik -->
+                <div class="controls-row">
+                    <!-- Icon Share / Shuffle -->
+                    <span class="ctrl-icon">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="18" cy="5" r="3"></circle>
+                            <circle cx="6" cy="12" r="3"></circle>
+                            <circle cx="18" cy="19" r="3"></circle>
+                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                        </svg>
+                    </span>
+
+                    <!-- Icon Previous Track -->
+                    <span class="ctrl-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="11,19 2,12 11,5"></polygon>
+                            <polygon points="22,19 13,12 22,5"></polygon>
+                        </svg>
+                    </span>
+
+                    <!-- Tombol Play Bulat -->
+                    <div class="play-btn-circle">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="6,3 20,12 6,21"></polygon>
+                        </svg>
+                    </div>
+
+                    <!-- Icon Next Track -->
+                    <span class="ctrl-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="2,5 11,12 2,19"></polygon>
+                            <polygon points="13,5 22,12 13,19"></polygon>
+                        </svg>
+                    </span>
+
+                    <!-- Icon Heart -->
+                    <span class="ctrl-icon heart-icon">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                        </svg>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Sisi Kanan: Cover Thumbnail Lagu -->
+            <div class="right-cover">
+                <img id="cover" src="" alt="Album Cover">
+            </div>
         </div>
     </div>
 
-    <!-- YouTube Embed Player Container -->
+    <!-- YouTube Embed Player Container (Hidden) -->
     <div id="yt-wrapper">
         <div id="youtube-player"></div>
     </div>
 
     <script>
         const socket = io();
-        const widget = document.getElementById('widget');
+        const widget = document.getElementById('widget-container');
         const followWidget = document.getElementById('follow-widget');
         
         let ytPlayer = null;
         let isPlayerReady = false;
         let currentPlayId = null;
         let pendingVideoId = null;
+        let progressInterval = null;
+        let totalDurationSec = 0;
 
         // --- 1. INISIALISASI YOUTUBE IFRAME PLAYER ---
         window.onYouTubeIframeAPIReady = function() {
@@ -159,16 +402,18 @@
         }
 
         function onPlayerStateChange(event) {
+            // YT.PlayerState.PLAYING === 1
+            if (event.data === YT.PlayerState.PLAYING) {
+                startProgressTracker();
+            }
             // YT.PlayerState.ENDED === 0
-            if (event.data === YT.PlayerState.ENDED) {
+            else if (event.data === YT.PlayerState.ENDED) {
                 notifySongEnded();
             }
         }
 
         function onPlayerError(event) {
             console.warn('[Overlay] YouTube Player error:', event.data);
-            // Error 100/101/150: video dihapus atau tidak diizinkan di-embed.
-            // Otomatis skip ke antrean berikutnya agar antrean tidak macet.
             notifySongEnded();
         }
 
@@ -181,7 +426,29 @@
             }
         }
 
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${m}:${s < 10 ? '0' : ''}${s}`;
+        }
+
+        function startProgressTracker() {
+            clearInterval(progressInterval);
+            progressInterval = setInterval(() => {
+                if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
+                    const currentTime = ytPlayer.getCurrentTime() || 0;
+                    const duration = (ytPlayer.getDuration && ytPlayer.getDuration()) || totalDurationSec || 1;
+                    
+                    const progressPercent = Math.min(100, Math.max(0, (currentTime / duration) * 100));
+                    document.getElementById('progress-knob').style.left = progressPercent + '%';
+                    
+                    document.getElementById('time-display').innerText = formatTime(currentTime);
+                }
+            }, 400);
+        }
+
         function notifySongEnded() {
+            clearInterval(progressInterval);
             widget.style.display = 'none';
             if (currentPlayId) {
                 socket.emit('song_ended', { playId: currentPlayId });
@@ -189,20 +456,35 @@
             }
         }
 
-        // --- 2. LOGIKA PENERIMAAN EVENT DARI SERVER ---
+        // --- 2. LOGIKA PENERIMAAN EVENT LAGU DARI SERVER ---
         socket.on('play_song', (data) => {
             if (!data || !data.videoId) return;
 
             currentPlayId = data.playId;
+            totalDurationSec = data.durationInSec || 0;
+
+            // Update teks sesuai request pengguna:
+            // 1. Teks "Baby's First Mix" diganti: username peminta lagu
+            document.getElementById('requester').innerText = "@" + data.requester;
+            // 2. Judul lagu
             document.getElementById('title').innerText = data.title;
-            document.getElementById('requester').innerText = "Req by: @" + data.requester;
+            // 3. Nama artis
+            document.getElementById('artist').innerText = data.artist || "YouTube Music";
+            // 4. Waktu durasi
+            document.getElementById('time-display').innerText = data.durationText || "0:00";
+            // 5. Gambar lagu di sebelah kanan
             document.getElementById('cover').src = data.thumbnail || '';
-            widget.style.display = 'flex';
+
+            // Reset knob slider
+            document.getElementById('progress-knob').style.left = '0%';
+
+            widget.style.display = 'block';
 
             playVideo(data.videoId);
         });
 
         socket.on('skip_song', () => {
+            clearInterval(progressInterval);
             widget.style.display = 'none';
             if (ytPlayer && typeof ytPlayer.stopVideo === 'function') {
                 ytPlayer.stopVideo();
@@ -210,7 +492,7 @@
             currentPlayId = null;
         });
 
-        // --- 3. NOTIFIKASI FOLLOWER BARU (DENGAN SISTEM ANTREAN) ---
+        // --- 3. NOTIFIKASI FOLLOWER BARU (DENGAN ANTREAN) ---
         const followQueue = [];
         let isShowingFollow = false;
 
